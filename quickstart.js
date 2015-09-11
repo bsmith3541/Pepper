@@ -2,11 +2,14 @@ var fs = require('fs');
 var readline = require('readline');
 var google = require('googleapis');
 var googleAuth = require('google-auth-library');
-
+var gmail = google.gmail('v1');
+var base64 = require('js-base64').Base64;
 var SCOPES = ['https://www.googleapis.com/auth/gmail.readonly'];
 var TOKEN_DIR = (process.env.HOME || process.env.HOMEPATH ||
     process.env.USERPROFILE) + '/.credentials/';
 var TOKEN_PATH = TOKEN_DIR + 'gmail-api-quickstart-2.json';
+// gapi.server.setApiKey('AIzaSyDuYb4YOtrk1hmzbkwsb_XU8dPeY8pGBMo');
+// gapi.server.load('gmail','v1',function(){});
 
 // Load client secrets from a local file.
 fs.readFile('client_secret.json', function processClientSecrets(err, content) {
@@ -16,7 +19,7 @@ fs.readFile('client_secret.json', function processClientSecrets(err, content) {
   }
   // Authorize a client with the loaded credentials, then call the
   // Gmail API.
-  authorize(JSON.parse(content), listLabels);
+  authorize(JSON.parse(content), listVirginAmericaMessages);
 });
 
 /**
@@ -32,7 +35,6 @@ function authorize(credentials, callback) {
   var redirectUrl = credentials.installed.redirect_uris[0];
   var auth = new googleAuth();
   var oauth2Client = new auth.OAuth2(clientId, clientSecret, redirectUrl);
-
   // Check if we have previously stored a token.
   fs.readFile(TOKEN_PATH, function(err, token) {
     if (err) {
@@ -98,25 +100,40 @@ function storeToken(token) {
  *
  * @param {google.auth.OAuth2} auth An authorized OAuth2 client.
  */
-function listLabels(auth) {
-  var gmail = google.gmail('v1');
-  gmail.users.labels.list({
+function listVirginAmericaMessages(auth) {
+  gmail.users.messages.list({
     auth: auth,
     userId: 'me',
+    q: 'from:no-reply@virginamerica.com'
   }, function(err, response) {
     if (err) {
       console.log('The API returned an error: ' + err);
       return;
     }
-    var labels = response.labels;
-    if (labels.length == 0) {
-      console.log('No labels found.');
+    var messages = response.messages;
+    if (messages.length == 0) {
+      console.log('No messages found.');
     } else {
-      console.log('Labels:');
-      for (var i = 0; i < labels.length; i++) {
-        var label = labels[i];
-        console.log('- %s', label.name);
+      console.log('Messages:');
+      for (var i = 0; i < messages.length; i++) {
+        var message = messages[i];
+        console.log('- %s', message.id);
+        getMessage(auth, 'me', message.id);
       }
     }
+  });
+}
+
+function getMessage(auth, userId, messageId) {
+  gmail.users.messages.get({
+    'auth': auth,
+    'userId': userId,
+    'format': 'full',
+    'id': messageId,
+  }, function(err, result) {
+      var messageBody = result.payload.parts[0].body.data;
+      console.log("RESULT: " + base64.decode(messageBody.replace(/-/g, '+').replace(/_/g, '/')));
+      console.log("ERROR: " + err);
+      // console.log("BODY:" + JSON.stringify(result.payload));
   });
 }
