@@ -6,7 +6,7 @@ var gmail = google.gmail('v1');
 var base64 = require('js-base64').Base64;
 var SCOPES = ['https://www.googleapis.com/auth/gmail.readonly'];
 var TOKEN_DIR = (process.env.HOME || process.env.HOMEPATH ||
-    process.env.USERPROFILE) + '/.credentials/';
+  process.env.USERPROFILE) + '/.credentials/';
 var TOKEN_PATH = TOKEN_DIR + 'gmail-api-quickstart-2.json';
 // gapi.server.setApiKey('AIzaSyDuYb4YOtrk1hmzbkwsb_XU8dPeY8pGBMo');
 // gapi.server.load('gmail','v1',function(){});
@@ -104,7 +104,8 @@ function listVirginAmericaMessages(auth) {
   gmail.users.messages.list({
     auth: auth,
     userId: 'me',
-    q: 'from:no-reply@virginamerica.com'
+    // q: 'from:no-reply@virginamerica.com'
+    q: 'SouthwestAirlines@luv.southwest.com'
   }, function(err, response) {
     if (err) {
       console.log('The API returned an error: ' + err);
@@ -114,11 +115,9 @@ function listVirginAmericaMessages(auth) {
     if (messages.length == 0) {
       console.log('No messages found.');
     } else {
-      console.log('Messages:');
+      console.log('Messages: ' + messages.length);
       for (var i = 0; i < messages.length; i++) {
-        var message = messages[i];
-        console.log('- %s', message.id);
-        getMessage(auth, 'me', message.id);
+        getMessage(auth, 'me', messages[i].id);
       }
     }
   });
@@ -131,9 +130,15 @@ function getMessage(auth, userId, messageId) {
     'format': 'full',
     'id': messageId,
   }, function(err, result) {
-      var messageBody = result.payload.parts[0].body.data;
-      console.log("RESULT: " + base64.decode(messageBody.replace(/-/g, '+').replace(/_/g, '/')));
-      console.log("ERROR: " + err);
-      // console.log("BODY:" + JSON.stringify(result.payload));
+    var messageBody;
+    var mimeType = result.payload.mimeType;
+    if (mimeType === 'text/html') {
+      messageBody = result.payload.body.data;
+    } else if (mimeType.indexOf('multipart') > -1) {
+      messageBody = result.payload.parts[0].body.data;
+    } else {
+      console.log("Unrecgonized format - " + mimeType);
+    }
+    console.log("RESULT: " + base64.decode(messageBody.replace(/-/g, '+').replace(/_/g, '/')));
   });
 }
