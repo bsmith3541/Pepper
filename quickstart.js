@@ -4,6 +4,7 @@ var google = require('googleapis');
 var googleAuth = require('google-auth-library');
 var gmail = google.gmail('v1');
 var base64 = require('js-base64').Base64;
+var cheerio = require('cheerio');
 var SCOPES = ['https://www.googleapis.com/auth/gmail.readonly'];
 var TOKEN_DIR = (process.env.HOME || process.env.HOMEPATH ||
   process.env.USERPROFILE) + '/.credentials/';
@@ -102,15 +103,15 @@ function listVirginAmericaMessages(auth) {
   gmail.users.messages.list({
     auth: auth,
     userId: 'me',
-    // q: 'from:no-reply@virginamerica.com'
-    q: 'SouthwestAirlines@luv.southwest.com'
+    q: 'from:no-reply@virginamerica.com'
+    // q: 'SouthwestAirlines@luv.southwest.com'
   }, function(err, response) {
     if (err) {
       console.log('The API returned an error: ' + err);
       return;
     }
     var messages = response.messages;
-    if (messages.length == 0) {
+    if (messages.length === 0) {
       console.log('No messages found.');
     } else {
       console.log('Messages: ' + messages.length);
@@ -137,6 +138,14 @@ function getMessage(auth, userId, messageId) {
     } else {
       console.log("Unrecgonized format - " + mimeType);
     }
-    console.log("RESULT: " + base64.decode(messageBody.replace(/-/g, '+').replace(/_/g, '/')));
+    var decodedText = base64.decode(messageBody.replace(/-/g, '+').replace(/_/g, '/'));
+    logRelevantDetails(decodedText);
   });
+}
+
+function logRelevantDetails(message) {
+  $ = cheerio.load(message);
+  $("font[id*=-departure-date]").each(function(i, element){
+      console.log("Departure Date: " + $(this).text().trim());
+    });
 }
